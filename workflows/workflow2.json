@@ -1,0 +1,454 @@
+{
+  "id": "a348529b-5769-4938-b166-741fd8f5367c",
+  "revision": 0,
+  "last_node_id": 81,
+  "last_link_id": 518,
+  "nodes": [
+    {
+      "id": 26,
+      "type": "GraphSigmas",
+      "pos": [
+        170.25476151918087,
+        -564.4133207322561
+      ],
+      "size": [
+        643.0955200195312,
+        618.4771728515625
+      ],
+      "flags": {},
+      "order": 7,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "sigmas",
+          "type": "SIGMAS",
+          "link": 517
+        }
+      ],
+      "outputs": [
+        {
+          "name": "graph",
+          "type": "IMAGE",
+          "links": null
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "GraphSigmas",
+        "ue_properties": {
+          "widget_ue_connectable": {},
+          "input_ue_unconnectable": {},
+          "version": "7.4"
+        }
+      },
+      "widgets_values": [
+        true,
+        "Original",
+        "beta57, shift 8",
+        0.9
+      ]
+    },
+    {
+      "id": 81,
+      "type": "GraphSigmas",
+      "pos": [
+        -565.2480373195116,
+        -558.90193195893
+      ],
+      "size": [
+        643.0955200195312,
+        618.4771728515625
+      ],
+      "flags": {},
+      "order": 4,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "sigmas",
+          "type": "SIGMAS",
+          "link": 518
+        }
+      ],
+      "outputs": [
+        {
+          "name": "graph",
+          "type": "IMAGE",
+          "links": null
+        }
+      ],
+      "properties": {
+        "ue_properties": {
+          "widget_ue_connectable": {},
+          "input_ue_unconnectable": {},
+          "version": "7.4"
+        },
+        "Node name for S&R": "GraphSigmas"
+      },
+      "widgets_values": [
+        true,
+        "Original",
+        "beta57, shift 8",
+        0.9
+      ]
+    },
+    {
+      "id": 2,
+      "type": "BetaSamplingScheduler",
+      "pos": [
+        -120.9823554953329,
+        -752.4084637303876
+      ],
+      "size": [
+        210,
+        106
+      ],
+      "flags": {},
+      "order": 2,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "model",
+          "type": "MODEL",
+          "link": 5
+        }
+      ],
+      "outputs": [
+        {
+          "name": "SIGMAS",
+          "type": "SIGMAS",
+          "links": [
+            509,
+            518
+          ]
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "BetaSamplingScheduler",
+        "ue_properties": {
+          "widget_ue_connectable": {
+            "alpha": true,
+            "beta": true
+          },
+          "input_ue_unconnectable": {},
+          "version": "7.2"
+        }
+      },
+      "widgets_values": [
+        20,
+        0.5,
+        0.7
+      ]
+    },
+    {
+      "id": 5,
+      "type": "ModelSamplingSD3",
+      "pos": [
+        -349.9331473264097,
+        -752.3897362475026
+      ],
+      "size": [
+        210,
+        58
+      ],
+      "flags": {},
+      "order": 1,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "model",
+          "type": "MODEL",
+          "link": 393
+        }
+      ],
+      "outputs": [
+        {
+          "name": "MODEL",
+          "type": "MODEL",
+          "links": [
+            5
+          ]
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "ModelSamplingSD3",
+        "ue_properties": {
+          "widget_ue_connectable": {
+            "shift": true
+          },
+          "input_ue_unconnectable": {},
+          "version": "7.2"
+        }
+      },
+      "widgets_values": [
+        8
+      ]
+    },
+    {
+      "id": 1,
+      "type": "EmptyModel",
+      "pos": [
+        -580.4020573581614,
+        -755.0311078734322
+      ],
+      "size": [
+        210,
+        58
+      ],
+      "flags": {},
+      "order": 0,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "MODEL",
+          "type": "MODEL",
+          "links": [
+            393
+          ]
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "EmptyModel",
+        "ue_properties": {
+          "widget_ue_connectable": {},
+          "input_ue_unconnectable": {},
+          "version": "7.2"
+        }
+      },
+      "widgets_values": [
+        "WAN"
+      ]
+    },
+    {
+      "id": 78,
+      "type": "SplitSigmasAtSigmaValue",
+      "pos": [
+        113.31012461069193,
+        -755.1115209507955
+      ],
+      "size": [
+        210,
+        122
+      ],
+      "flags": {},
+      "order": 3,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "sigmas",
+          "type": "SIGMAS",
+          "link": 509
+        }
+      ],
+      "outputs": [
+        {
+          "name": "high sigmas",
+          "type": "SIGMAS",
+          "links": [
+            514
+          ]
+        },
+        {
+          "name": "low sigmas",
+          "type": "SIGMAS",
+          "links": [
+            516
+          ]
+        },
+        {
+          "name": "INT",
+          "type": "INT",
+          "links": null
+        }
+      ],
+      "properties": {
+        "ue_properties": {
+          "widget_ue_connectable": {},
+          "input_ue_unconnectable": {}
+        },
+        "Node name for S&R": "SplitSigmasAtSigmaValue"
+      },
+      "widgets_values": [
+        0.9,
+        false
+      ]
+    },
+    {
+      "id": 79,
+      "type": "ConcatentateSigmas",
+      "pos": [
+        594.0236176407645,
+        -766.5570803086556
+      ],
+      "size": [
+        169.86484375,
+        46
+      ],
+      "flags": {},
+      "order": 6,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "sigmas1",
+          "type": "SIGMAS",
+          "link": 515
+        },
+        {
+          "name": "sigmas2",
+          "type": "SIGMAS",
+          "link": 516
+        }
+      ],
+      "outputs": [
+        {
+          "name": "sigmas",
+          "type": "SIGMAS",
+          "links": [
+            517
+          ]
+        }
+      ],
+      "properties": {
+        "ue_properties": {
+          "widget_ue_connectable": {},
+          "input_ue_unconnectable": {}
+        },
+        "Node name for S&R": "ConcatentateSigmas"
+      }
+    },
+    {
+      "id": 80,
+      "type": "ChangeStepCount",
+      "pos": [
+        347.12655149266556,
+        -831.9602766392765
+      ],
+      "size": [
+        210,
+        82
+      ],
+      "flags": {},
+      "order": 5,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "sigmas",
+          "type": "SIGMAS",
+          "link": 514
+        }
+      ],
+      "outputs": [
+        {
+          "name": "sigmas",
+          "type": "SIGMAS",
+          "links": [
+            515
+          ]
+        }
+      ],
+      "properties": {
+        "ue_properties": {
+          "widget_ue_connectable": {},
+          "input_ue_unconnectable": {}
+        },
+        "Node name for S&R": "ChangeStepCount"
+      },
+      "widgets_values": [
+        3,
+        0
+      ]
+    }
+  ],
+  "links": [
+    [
+      5,
+      5,
+      0,
+      2,
+      0,
+      "MODEL"
+    ],
+    [
+      393,
+      1,
+      0,
+      5,
+      0,
+      "MODEL"
+    ],
+    [
+      509,
+      2,
+      0,
+      78,
+      0,
+      "SIGMAS"
+    ],
+    [
+      514,
+      78,
+      0,
+      80,
+      0,
+      "SIGMAS"
+    ],
+    [
+      515,
+      80,
+      0,
+      79,
+      0,
+      "SIGMAS"
+    ],
+    [
+      516,
+      78,
+      1,
+      79,
+      1,
+      "SIGMAS"
+    ],
+    [
+      517,
+      79,
+      0,
+      26,
+      0,
+      "SIGMAS"
+    ],
+    [
+      518,
+      2,
+      0,
+      81,
+      0,
+      "SIGMAS"
+    ]
+  ],
+  "groups": [],
+  "config": {},
+  "extra": {
+    "ue_links": [],
+    "links_added_by_ue": [],
+    "cg_preview_position": [
+      100,
+      200
+    ],
+    "ds": {
+      "scale": 0.6115909044841569,
+      "offset": [
+        1261.7920782406363,
+        993.8331875575668
+      ]
+    },
+    "node_versions": {
+      "cg-sigmas": "fa712c6c360af8fea01e5868d57102600e18527a",
+      "comfy-core": "0.3.67"
+    },
+    "cg_status_position": [
+      100,
+      100
+    ],
+    "frontendVersion": "1.28.8"
+  },
+  "version": 0.4
+}

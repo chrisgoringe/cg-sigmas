@@ -11,7 +11,7 @@ async def comfy_entrypoint() -> ComfyExtension:
         async def get_node_list(self) -> list[type[io.ComfyNode]]:
             return [
                 EmptyModel, ManualSigmas, KL_Optimal,                        # tools for getting sigmas
-                SplitSigmasAtSigmaValue,ConcatentateSigmas, ChangeStepCount,
+                SplitSigmasAtSigmaValue, ConcatentateSigmas, ChangeStepCount,
                 GraphSigmas, DisplayAnything
             ]
         
