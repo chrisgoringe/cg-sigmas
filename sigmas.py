@@ -6,6 +6,7 @@ import folder_paths
 
 import torch
 import matplotlib.pyplot as plt
+from matplotlib.ticker import StrMethodFormatter
 from PIL import Image
 import numpy as np
 
@@ -221,6 +222,8 @@ class GraphSigmas(io.ComfyNode):
         if title and title[0]: ax.set_title(title[0])
         ax.set_xlabel("steps")
         ax.set_ylabel("sigma")
+
+        ax.xaxis.set_major_formatter(StrMethodFormatter("{x:.0f}"))
         
         for i, sigma_list in enumerate(sigmas_lists):
             if text_labels: ax.plot(range(len(sigma_list)), sigma_list, label=text_labels[i]) 
