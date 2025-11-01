@@ -173,3 +173,10 @@ sigma space - on the right, we've tripled the number of high sigma steps:
 
 You can see the effects of these nodes in workflow2.json [here](workflows).
 </details>
+
+# More complicated sigmas
+
+To be added 
+- techniques that add noise back in
+- lying sigmas
+- etc
