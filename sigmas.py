@@ -2,16 +2,15 @@ import comfy.supported_models
 from comfy.supported_models_base import BASE
 from comfy.model_patcher import ModelPatcher
 from comfy_api.latest import io, ui
-import folder_paths
 
 import torch
 import matplotlib.pyplot as plt
 from matplotlib.ticker import StrMethodFormatter
-from PIL import Image
-import numpy as np
+
 
 from typing import Optional
-import random, os, math
+import random, math
+from .modules.utils import safe_tempfile, load_image, label_plot
 
 from comfy.comfy_types.node_typing import IO
 anything = io.Custom(IO.ANY)
@@ -207,7 +206,6 @@ class GraphSigmas(io.ComfyNode):
     
     @classmethod
     def execute(cls, sigmas:list[torch.Tensor|list[float]], title:Optional[list[str]]=None, labels:Optional[list[str]]=None, high_low_divide:Optional[list[float]]=None, show_intercepts:list[bool]=[False,]) -> io.NodeOutput: # type: ignore
-
         sigmas_lists = [[float(s) for s in sigma_list] for sigma_list in sigmas] 
         amarker = high_low_divide[0] if high_low_divide else None
         fig, ax = plt.subplots()
@@ -219,12 +217,6 @@ class GraphSigmas(io.ComfyNode):
         if len(show_intercepts)==1 and len(sigmas_lists)>1:
             show_intercepts = [show_intercepts[0] for _ in sigmas_lists]
 
-        if title and title[0]: ax.set_title(title[0])
-        ax.set_xlabel("steps")
-        ax.set_ylabel("sigma")
-
-        ax.xaxis.set_major_formatter(StrMethodFormatter("{x:.0f}"))
-        
         for i, sigma_list in enumerate(sigmas_lists):
             if text_labels: ax.plot(range(len(sigma_list)), sigma_list, label=text_labels[i]) 
             else: ax.plot(range(len(sigma_list)), sigma_list)
@@ -236,18 +228,16 @@ class GraphSigmas(io.ComfyNode):
                     mx = solve(amarker, sigma_list)
                     ax.plot([mx, mx], [min(sigma_list), max(sigma_list)], label=f"step = {mx:>.1f}")
 
-        ax.legend()
+        label_plot( ax, title[0] if title else None, xlabel="steps", xformat="{x:.0f}", ylabel="sigma", yformat="{x:>5.2f}" )
 
-        filename = f"{random.randint(1000000,9999999)}.png"
-        filepath = os.path.join(folder_paths.get_temp_directory(), filename)
-        fig.savefig(filepath)
+        filepath = safe_tempfile()
+        fig.savefig(filepath, dpi=300)
         plt.close(fig)
 
-        with Image.open(filepath) as img:
-            img = img.convert("RGB")
-            image:torch.Tensor = torch.from_numpy(np.array(img).astype(np.float32) / 255.0).unsqueeze(0)
+        image = load_image(filepath)
 
-        return io.NodeOutput(image, ui=ui.SavedImages([ui.SavedResult(filename, "", io.FolderType.temp)]))
+
+        return io.NodeOutput(image, ui=ui.SavedImages([ui.SavedResult(filepath.name, "", io.FolderType.temp)]))
 
 class EmptyModel(io.ComfyNode):
     

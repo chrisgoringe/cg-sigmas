@@ -5,6 +5,7 @@ from .sigmas import (
     GraphSigmas, DisplayAnything
 )
 from .progress_sampler import ProgressSampler
+from .shift import ExploreShift
 
 async def comfy_entrypoint() -> ComfyExtension:
     class CGSigmasExtension(ComfyExtension):
@@ -13,7 +14,8 @@ async def comfy_entrypoint() -> ComfyExtension:
                 EmptyModel, ManualSigmas, KL_Optimal,                         
                 SplitSigmasAtSigmaValue, ConcatentateSigmas, ChangeStepCount, 
                 GraphSigmas, DisplayAnything,
-                ProgressSampler
+                ProgressSampler,
+                ExploreShift
             ]
         
     return CGSigmasExtension()

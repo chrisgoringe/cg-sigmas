@@ -1,13 +1,22 @@
-# Sigmas
+# Sigmas, Scheduling, Shift and Stuff
 
 A collection of nodes I put together to try to understand sigmas and scheduling a bit better.
 
 They can be found under `quicknodes/sigmas`.
 
+## Version history
+
+*Update - 3/11/2025*
+- added discussion of shift and the ExploreShift node
+- added discussion of 'lying sigmas'
+- a few clarifications
+
+*First version - 1/11/2025*
+
 ## What are sigmas anyway?
 
 <details>
-<summary>Sigma is a measure of how much noise there is left in an image as you go through the denoising process. </summary>
+<summary>Sigma is a measure of how much noise there is assumed to be left in an image as you go through the denoising process. </summary>
 
 `sigma=0.0` means that there is no noise. For the purposes of this explanation, we'll say that `sigma=1.0` is pure noise 
 (some models, such as SDXL, use `sigma=14.1` for pure noise, for reasons that aren't clear to me, but the values just scale).
@@ -83,9 +92,9 @@ changing cfg, adding or removing LoRAs, or whatever.
 <details>
 
 <summary>If you want to improve details, you want the denoising process to take more care (by taking more, smaller, steps)
-when `sigma` is relatively small; if you are wanting to improve broad features, you want more steps while `sigma` is high.</summary>
+when sigma is relatively small; if you are wanting to improve broad features, you want more steps while sigma is high.</summary>
 
-That is exactly what `shift` does in a model like WAN:
+That is exactly what `shift` does in a model like WAN (using the `ModelSamplingSD3` node):
 
 ![screenshot showing the decay of sigma with different shifts](images/shift.png)
 
@@ -96,6 +105,8 @@ Or the different beta schedulers - beta57 pays more attention to detail than bet
 The nodes in this pack help to visualise the `sigmas` created by different schedulers, and also help you manipulate them.
 
 </details>
+
+---
 
 # Visualising Sigmas
 
@@ -174,9 +185,90 @@ sigma space - on the right, we've tripled the number of high sigma steps:
 You can see the effects of these nodes in workflow2.json [here](workflows).
 </details>
 
-# More complicated sigmas
+---
 
-To be added 
+# How does shift work?
+
+<details>
+<summary>Shift works by modifying the time axis.</summary> 
+
+Imagine the denoising steps as a timer running down from `t=1` to `t=0`. If you do a twenty step denoise, 
+after 7 steps `t = 13/20`, because there are 13 out of 20 steps left.
+
+The model is actually given a different timestep, `t'`, determined by shift.
+
+WAN (and other models using the `ModelSamplingSD3` node) uses 'Discrete Flow', in which
+`t' = t * [shift / (1 + (shift - 1) * t)]`, which looks like this:
+
+![discrete](images/discrete.png)
+
+Note the x-axis is `1-t`, the fraction of steps taken, so it runs from left to right like the sigma plots do.
+You'll also notice that for `shift=1.0` we have `t'=t`, an unshifted time axis.
+
+You can create plots like this with the `ExploreShift` node in this pack. 
+
+Flux uses shift differently. `t' = e^shift / ( e^shift + (1/t) - 1 )`. 
+
+<details>
+<summary>Firstly, shift depends on image size</summary>  
+The `ModelSamplingFlux` node doesn't allow you to set the shift directly, because it sets a value of shift which
+can depend upon the image area. The node specifies `base_shift`, which is used for an image
+that is 256x256 pixels in area, and `max_shift`, which is used for an image that is 1024x1024. For sizes of image in between, 
+the value of shift is linearly interpolated (based on the area); for small and larger images the same formula is used, so 
+shift can be less than `base_shift` (for smaller images) or greater than the misnamed `max_shift` (for larger ones)
+</details>
+
+Secondly the formula used, `t' = e^shift / ( e^shift + (1/t) - 1 )` is 'unshifted' for `shift=0.0`, 
+and requries smaller variations in value of shift.
+
+![flux](images/fluxflow.png)
+
+Differences notwithstanding, the general effect is similar (compare flux shift of 1.15 with discrete shift of 3).
+Larger values of shift cause the curve to stay high for longer, which means the model acts as if it were early in
+the denoising process for longer, as reflected in sigma remaining high for longer.
+
+</details>
+
+---
+
+# Lying Sigmas - what, and why?
+
+<details>
+<summary>"Lying Sigmas" describes a process by which the sampler gives the model incorrect information 
+about the noise left in the image.</summary>
+
+Right at the heart of the image generation process is the model, which has been trained to separate image from noise.
+When the model was trained it was given images with different amounts of noise, along with the corresponding 
+`sigma` value. So it 'knows' what sort of noise it ought to predict for a given value of `sigma`.
+
+In two or more part models, like WAN 2.2, the 'high' and 'low' models are trained on sources with different
+ranges of noise - 'high' is trained to identify noise in high-noise/high-sigma images, 'low' in low-noise/low-sigma images.
+
+In sampling, the sampler gives the model the noisy image, and the sigma value, so the model 'knows' how much and what sort 
+of noise it is looking for. At its simplest, a "lying sigma" passes the model an inaccurate value of sigma, which tricks the
+model into looking for the wrong amount of noise.
+
+Here's the core of the code from [Detail Daemon](https://github.com/Jonseed/ComfyUI-Detail-Daemon)'s LyingSigmaSampler:
+
+```python
+    def model_wrapper(x, sigma, **extra_args):
+        sigma_float = float(sigma.max().detach().cpu())
+        if end_sigma <= sigma_float <= start_sigma:
+            sigma = sigma * (1.0 + lss_dishonesty_factor)
+        return model(x, sigma, **extra_args)
+```
+
+For those who don't speak Python, that translates as: "if sigma is between the start and end values, 
+multiply it by a number close to one before passing it on to the model".
+
+In the description [Jonseed](https://github.com/Jonseed) writes *negative values adjust the sigmas down, increasing detail*. 
+This works because a (small) negative value of `lss_dishonesty_factor` means that sigma is multiplied by a value slightly less than one,
+reducing it, which tells the model there is less noise than there actually is. The model has to interpret the noisy image in a way that
+is consistent with there being less noise, and one way of doing that is by adding detail to the image - fine details are
+more similar to noise than large features, so assuming more detail in the image can reduce the noise that needs to be removed.
+
+
+# To be added 
+
 - techniques that add noise back in
-- lying sigmas
-- etc
+- different noise distributions
