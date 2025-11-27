@@ -6,6 +6,9 @@ They can be found under `quicknodes/sigmas`.
 
 ## Version history
 
+*Update - 27/11/2025*
+- added Flux2Sigmas node and some discussion of Flux2 use of shift
+
 *Update - 3/11/2025*
 - added discussion of shift and the ExploreShift node
 - added discussion of 'lying sigmas'
@@ -210,12 +213,23 @@ You can create plots like this with the `ExploreShift` node in this pack.
 Flux uses shift differently. `t' = e^shift / ( e^shift + (1/t) - 1 )`. 
 
 <details>
-<summary>Firstly, shift depends on image size</summary>  
+<summary>Firstly, shift depends on image size (and for Flux2, the number of steps)</summary>  
 The `ModelSamplingFlux` node doesn't allow you to set the shift directly, because it sets a value of shift which
 can depend upon the image area. The node specifies `base_shift`, which is used for an image
 that is 256x256 pixels in area, and `max_shift`, which is used for an image that is 1024x1024. For sizes of image in between, 
 the value of shift is linearly interpolated (based on the area); for small and larger images the same formula is used, so 
-shift can be less than `base_shift` (for smaller images) or greater than the misnamed `max_shift` (for larger ones)
+shift can be less than `base_shift` (for smaller images) or greater than the misnamed `max_shift` (for larger ones).
+
+For Flux2 the same basic principle applies, but the value of shift is calculated by `compute_empirical_mu`
+(`in comfy_extras/nodes_flux.py`), which also uses the image size, and, for images smaller than around 1050px square, the number of steps. 
+
+For images around 1048px square, `mu ~ 1.2`, increasing for larger images (at 2048px square, `mu ~ 3.4`).
+
+For smaller images `mu` depends on the number of steps, decreasing as step count increases, so for a 512x512 image, 
+`mu ~ 2` at 10 steps, dropping to `mu ~ 1.7` at 50 steps.
+
+The rationale for this is unclear to me...
+
 </details>
 
 Secondly the formula used, `t' = e^shift / ( e^shift + (1/t) - 1 )` is 'unshifted' for `shift=0.0`, 

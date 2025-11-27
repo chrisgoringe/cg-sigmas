@@ -2,6 +2,8 @@ import comfy.supported_models
 from comfy.supported_models_base import BASE
 from comfy.model_patcher import ModelPatcher
 from comfy_api.latest import io, ui
+from comfy_extras.nodes_flux import Flux2Scheduler
+import nodes
 
 import torch
 import matplotlib.pyplot as plt
@@ -51,6 +53,23 @@ class KL_Optimal(io.ComfyNode):
         fraction = torch.arange(n, dtype=torch.float).div_(n - 1)  # n equally spaced values from 0.0 to 1.0
         sigmas = ( (1 - fraction) * math.atan(sigma_max) + fraction * math.atan(sigma_min) ).tan_()
         return io.NodeOutput( sigmas, )
+    
+class Flux2Sigmas(Flux2Scheduler):
+    @classmethod
+    def define_schema(cls):
+        return io.Schema(
+            node_id  = "Flux2Sigmas",
+            category = "quicknodes/sigmas",
+            inputs  = [
+                io.Int.Input("steps", default=20, min=1, max=4096),
+                io.Int.Input("width", default=1024, min=16, max=nodes.MAX_RESOLUTION, step=1),
+                io.Int.Input("height", default=1024, min=16, max=nodes.MAX_RESOLUTION, step=1),
+            ],
+            outputs = [
+                io.Sigmas.Output("sigmas", display_name="sigmas"),
+            ]
+        )
+
     
 class DisplayAnything(io.ComfyNode):
     @classmethod
@@ -175,7 +194,7 @@ class ManualSigmas(io.ComfyNode):
         return io.NodeOutput( torch.Tensor(s_floats), "\n".join(warnings) ) 
 
 
-def solve(y_target:float, ys:list[float]) -> float:
+def solve_for_x(y_target:float, ys:list[float]) -> float:
     x = 0
     for i, y in enumerate(ys):
         if y < y_target and x==0: x = i-1
@@ -183,6 +202,13 @@ def solve(y_target:float, ys:list[float]) -> float:
     dy       = y_target - ys[x] 
     dx = dy / dy_by_dx
     return x + dx
+
+def solve_for_y(x_target:float, ys:list[float]) -> float:
+    x = int(x_target)
+    dy_by_dx = ys[x+1] - ys[x]  
+    dx       = x_target - x      
+    dy = dy_by_dx * dx
+    return ys[x] + dy
 
 class GraphSigmas(io.ComfyNode):
     @classmethod
@@ -195,7 +221,8 @@ class GraphSigmas(io.ComfyNode):
                 io.String.Input("title", optional=True),
                 io.String.Input("labels", optional=True),
                 io.Float.Input("high_low_divide", optional=True, default=0.0, tooltip="Add a horizontal line at this value of sigma"),
-                io.Boolean.Input("show_intercepts", default=False)
+                io.Int.Input("step_divide", optional=True, default=0, tooltip="If set to a positive integer, show vertical line at this step"),
+                io.Boolean.Input("show_intercepts", default=False, tooltip="If true, show vertical lines where horizontal line intersects sigmas"),
             ],
             outputs = [
                 io.Image.Output("graph", display_name="graph"),
@@ -205,30 +232,47 @@ class GraphSigmas(io.ComfyNode):
         )
     
     @classmethod
-    def execute(cls, sigmas:list[torch.Tensor|list[float]], title:Optional[list[str]]=None, labels:Optional[list[str]]=None, high_low_divide:Optional[list[float]]=None, show_intercepts:list[bool]=[False,]) -> io.NodeOutput: # type: ignore
+    def execute(cls, # type: ignore
+                sigmas:list[torch.Tensor|list[float]], 
+                title:Optional[list[str]]=None, 
+                labels:Optional[list[str]]=None, 
+                high_low_divide:Optional[list[float]]=None, 
+                step_divide:Optional[list[int]]=None,
+                show_intercepts:list[bool]=[False,]
+            ) -> io.NodeOutput: 
+        
+        # Process input lists
+        n = len(sigmas)
+
         sigmas_lists = [[float(s) for s in sigma_list] for sigma_list in sigmas] 
-        amarker = high_low_divide[0] if high_low_divide else None
+        graph_title  = title[0] if title else None
+        labels       = cls.extend_list(labels, n) 
+        text_labels  = labels if labels[0] else ([f"#{i+1}" for i in range(n)] if n>1 else [None,])
+        ymarker      = cls.extend_list(high_low_divide, n)
+        xmarker      = cls.extend_list(step_divide, n)
+        intercepts   = cls.extend_list(show_intercepts, n)
+
+        min_x = 0
+        max_x = max([len(sigma_list)-1 for sigma_list in sigmas_lists])
+        min_y = min(s for sigma_list in sigmas_lists for s in sigma_list)
+        max_y = max(s for sigma_list in sigmas_lists for s in sigma_list)
+
         fig, ax = plt.subplots()
 
-        labels = [l.strip() for l in labels if l.strip()] if labels else []
-        text_labels = labels if len(labels)==len(sigmas_lists) else \
-                                ([f"#{i+1}" for i in range(len(sigmas_lists))] if len(sigmas_lists)>1 else None)
+        for sigma_list, label, x_mark, y_mark, intercept in zip(sigmas_lists, text_labels, xmarker, ymarker, intercepts):
+            ax.plot(range(len(sigma_list)), sigma_list, label=label) 
+            if y_mark and min_y < y_mark < max_y:
+                ax.plot([min_x, max_x], [y_mark, y_mark], label=f"sigma = {y_mark}")
+                if intercept:
+                    xp = solve_for_x(y_mark, sigma_list)
+                    ax.plot([xp, xp], [min_y, max_y], label=f"step = {xp:>.1f}")
+            if x_mark and min_x < x_mark < max_x: 
+                ax.plot([x_mark, x_mark], [min_y, max_y], label=f"step = {x_mark}")
+                if intercept:
+                    yp = solve_for_y(x_mark, sigma_list)
+                    ax.plot([min_x, max_x], [yp, yp], label=f"sigma = {yp:>.2f}")
 
-        if len(show_intercepts)==1 and len(sigmas_lists)>1:
-            show_intercepts = [show_intercepts[0] for _ in sigmas_lists]
-
-        for i, sigma_list in enumerate(sigmas_lists):
-            if text_labels: ax.plot(range(len(sigma_list)), sigma_list, label=text_labels[i]) 
-            else: ax.plot(range(len(sigma_list)), sigma_list)
-
-        if amarker:
-            ax.plot([0,len(sigmas_lists[0])-1], [amarker, amarker], label=f"sigma = {amarker}")
-            for i, sigma_list in enumerate(sigmas_lists):
-                if show_intercepts[i]:
-                    mx = solve(amarker, sigma_list)
-                    ax.plot([mx, mx], [min(sigma_list), max(sigma_list)], label=f"step = {mx:>.1f}")
-
-        label_plot( ax, title[0] if title else None, xlabel="steps", xformat="{x:.0f}", ylabel="sigma", yformat="{x:>5.2f}" )
+        label_plot( ax, graph_title, xlabel="steps", xformat="{x:.0f}", ylabel="sigma", yformat="{x:>5.2f}" )
 
         filepath = safe_tempfile()
         fig.savefig(filepath, dpi=300)
@@ -238,6 +282,12 @@ class GraphSigmas(io.ComfyNode):
 
 
         return io.NodeOutput(image, ui=ui.SavedImages([ui.SavedResult(filepath.name, "", io.FolderType.temp)]))
+    
+    @staticmethod
+    def extend_list(lst:Optional[list], target_length:int) -> list:
+        if not lst: lst = [None,]
+        while len(lst)<target_length: lst.append(lst[-1])
+        return lst
 
 class EmptyModel(io.ComfyNode):
     

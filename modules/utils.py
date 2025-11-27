@@ -11,6 +11,7 @@ from typing import Optional
 
 def safe_tempfile() -> Path:
     tempdir = Path(folder_paths.get_temp_directory())
+    if not tempdir.exists(): tempdir.mkdir()
     while (filepath := tempdir / f"{random.randint(1000000,9999999)}.png").exists(): pass
     return filepath
 
