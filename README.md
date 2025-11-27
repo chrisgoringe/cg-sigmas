@@ -8,6 +8,7 @@ They can be found under `quicknodes/sigmas`.
 
 *Update - 27/11/2025*
 - added Flux2Sigmas node and some discussion of Flux2 use of shift
+- added step number intercepts to the graphing node
 
 *Update - 3/11/2025*
 - added discussion of shift and the ExploreShift node
