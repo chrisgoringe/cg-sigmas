@@ -6,6 +6,10 @@ They can be found under `quicknodes/sigmas`.
 
 ## Version history
 
+*Update - 12/12/2025*
+- added UpstepSamplerWrap and SamplerSwitcherWrap nodes
+- added some discussion of problems as low noise with some model/samplers
+
 *Update - 27/11/2025*
 - added Flux2Sigmas node and some discussion of Flux2 use of shift
 - added step number intercepts to the graphing node
@@ -281,7 +285,68 @@ This works because a (small) negative value of `lss_dishonesty_factor` means tha
 reducing it, which tells the model there is less noise than there actually is. The model has to interpret the noisy image in a way that
 is consistent with there being less noise, and one way of doing that is by adding detail to the image - fine details are
 more similar to noise than large features, so assuming more detail in the image can reduce the noise that needs to be removed.
+</details>
 
+# Some samplers are bad at low noise
+
+<details>
+<summary>Some samplers, such as res_multistep, get worse if you add more steps. Why?</summary>
+
+Short answer is that I don't know. But it appears as if the issue arises when the final step removes a small amount of noise,
+using a multistep sampler. I suspect that the algoriths for multistep sampling cope badly with small steps following large ones
+(which intuitively makes sense; a multistep sampler is using data from multiple points, far separated in `sigma`, to predict
+the change required for a small change in `sigma` - that's numerically unstable)
+</details>
+
+<details>
+<summary>The UpstepSamplerWrap node allows you to step backwards (by adding noise back in).</summary>
+
+There are some sampling approaches which add noise back into the model during the denoising process.
+It's not yet clear to be why this would help, but it seems that in some situations it does.
+Among other things, this offers a way to take more steps in the low noise (detail defining) stage while
+avoiding the low noise issues described above.
+
+Increasing noise corresponds to increasing `sigma`.
+
+The `UpstepSamplerWrap` node wraps a sampler in a function that extracts any steps in which `sigma` increases, 
+and instead of taking a step using the model, it adds some noise back in. You just chain it like this:
+
+![upstep](images/upstep.png)
+
+How much noise to add? Given that `sigma` is a measure of noise, a naive approach would be to add back 
+in a sample of noise multiplied by the amount `sigma` is increasing by. That's what you get if you use
+the `linear` mode.
+
+However, noise doesn't add like that. Noise is essentially a vector in latent space, and if you add two
+vectors together, the magnitude of the resulting vector is less than (or equal to) the sum of the magnitude
+of the two vectors. For random vectors in a large space, the average result is Pythagorean - that is
+`a^2 + b^2 = c^2`.
+
+So there are two options in the node, represented by these functions (going from `sigma = a` up to `sigma = b`,
+so `b>a`). 
+
+```python
+def pythagorean(a,b): 
+    return (b ** 2 - a ** 2) ** 0.5 
+
+def linear(a,b): 
+    return b - a
+```
+
+You can also just choose to scale the noise added by the scaling multiplier.
+
+</details>
+
+<details>
+<summary>The SamplerSwitcherWrap node allows you to swap sampler at a given sigma.</summary>
+
+Another option is just to use `euler` for the lowest noise steps.
+
+The `SamplerSwitcherWrap` node wraps two samplers and switches between them. You just chain it like this:
+
+![upstep](images/switcher.png)
+
+</details>
 
 # To be added 
 

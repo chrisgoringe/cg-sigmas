@@ -129,6 +129,11 @@ class ConcatentateSigmas(io.ComfyNode):
     def execute(cls, sigmas1:torch.Tensor|list[float], sigmas2:torch.Tensor|list[float]) -> io.NodeOutput: # type: ignore
         longlist = [ float(i) for i in sigmas1 ] + [ float(i) for i in sigmas2[1:] ]
         return io.NodeOutput( torch.tensor(longlist), )
+    
+def split_sigmas_at(sigmas, threshold):
+    err = [ abs(s-threshold) for s in sigmas ]
+    idx = err.index(min(err))
+    return sigmas[:idx+1], sigmas[idx:], idx
 
 class SplitSigmasAtSigmaValue(io.ComfyNode):
     @classmethod
@@ -150,10 +155,11 @@ class SplitSigmasAtSigmaValue(io.ComfyNode):
     
     @classmethod
     def execute(cls, sigmas:list[float], split_at:float, adjust:float) -> io.NodeOutput: # type: ignore
-        err = [ abs(s-split_at) for s in sigmas ]
-        idx = err.index(min(err))
-        if adjust: sigmas[idx] = split_at 
-        return io.NodeOutput( sigmas[:idx+1], sigmas[idx:], idx )
+        high, low, idx = split_sigmas_at(sigmas, split_at)
+        if adjust: 
+            high[-1] = split_at 
+            low[0] = split_at
+        return io.NodeOutput( high, low, idx )
 
 class ManualSigmas(io.ComfyNode):
     @classmethod
